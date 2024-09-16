@@ -1,5 +1,6 @@
 import os
 import re
+from io import BytesIO
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -19,34 +20,36 @@ def start(update: Update, context: CallbackContext):
 
 # Handler for file uploads
 def handle_file(update: Update, context: CallbackContext):
-    file = update.message.document.get_file()
-    file.download('input.html')
+    try:
+        file = update.message.document.get_file()
+        file_content = BytesIO(file.download_as_bytearray()).read().decode('utf-8')  # Download the file in-memory and decode
 
-    # Open and read the file content
-    with open('input.html', 'r', encoding='utf-8') as f:
-        file_content = f.read()
+        # Find all video and thumbnail links
+        video_links = video_regex.findall(file_content)
+        thumbnail_links = thumbnail_regex.findall(file_content)
 
-    # Find all video and thumbnail links
-    video_links = video_regex.findall(file_content)
-    thumbnail_links = thumbnail_regex.findall(file_content)
+        # Remove duplicates while maintaining order
+        video_links = list(dict.fromkeys(video_links))
+        thumbnail_links = list(dict.fromkeys(thumbnail_links))
 
-    # Remove duplicates while maintaining order
-    video_links = list(dict.fromkeys(video_links))
-    thumbnail_links = list(dict.fromkeys(thumbnail_links))
+        if not video_links:
+            update.message.reply_text("No video links found.")
+            return
 
-    if not video_links:
-        update.message.reply_text("No video links found.")
-        return
+        # Prepare response
+        response = "Here are the extracted links:\n\n"
+        for video_link, thumbnail_link in zip(video_links, thumbnail_links):
+            response += f"Video: {video_link}\nThumbnail: {thumbnail_link}\n\n"
 
-    # Prepare response
-    response = "Here are the extracted links:\n\n"
-    for video_link, thumbnail_link in zip(video_links, thumbnail_links):
-        response += f"Video: {video_link}\nThumbnail: {thumbnail_link}\n\n"
+        update.message.reply_text(response)
 
-    update.message.reply_text(response)
+    except Exception as e:
+        update.message.reply_text("An error occurred while processing your file.")
+        print(f"Error: {e}")
 
 # Error handler
 def error_handler(update: Update, context: CallbackContext):
+    print(f"Update {update} caused error {context.error}")
     update.message.reply_text('An error occurred.')
 
 def main():
