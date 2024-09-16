@@ -37,13 +37,13 @@ def handle_file(update: Update, context: CallbackContext):
         file = update.message.document.get_file()
 
         # Log the file information (size, name, etc.)
-        print(f"Received file: {file.file_id} - Size: {file.file_size} bytes")
+        print(f"Received file: {file.file_id} - Size: {file.file_size} bytes - File Name: {update.message.document.file_name}")
 
         # Download the file content into memory
         file_content = BytesIO(file.download_as_bytearray()).read().decode('utf-8')
 
         # Log file content (Optional, but useful for debugging)
-        print(f"File content: {file_content[:200]}...")  # Show first 200 characters
+        print(f"File content (first 500 characters): {file_content[:500]}...")  # Show first 500 characters
 
         # Find all video and thumbnail links
         video_links = video_regex.findall(file_content)
